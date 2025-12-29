@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>অ্যাডমিশন ক্যালেন্ডার - 3D Pro</title>
+    <meta name="description" content="বাংলাদেশের সকল পাবলিক, প্রাইভেট ও অধিভুক্ত বিশ্ববিদ্যালয়ের ভর্তি পরীক্ষার তারিখ।">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Hind Siliguri', 'sans-serif'], 
+                        serif: ['Hind Siliguri', 'serif'],
+                        mono: ['Hind Siliguri', 'monospace'],
+                        bengali: ['Hind Siliguri', 'sans-serif'],
+                    },
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Base Styles & Variables -->
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --background: 224 71% 4%;
+                --foreground: 213 31% 91%;
+                --card: 224 71% 4%;
+                --primary: 210 40% 98%;
+                --border: 216 34% 17%;
+                --radius: 1rem;
+            }
+        }
+
+        body {
+            background-color: #020617; 
+            overflow-x: hidden;
+            font-family: 'Hind Siliguri', sans-serif !important;
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform-style: preserve-3d;
+            transform: perspective(1000px);
+            transition: transform 0.1s ease-out;
+        }
+
+        .glass-card-inner {
+            transform: translateZ(20px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+        }
+
+        /* 3D Button */
+        .btn-3d {
+            transition: all 0.1s;
+            box-shadow: 0 4px 0 hsl(var(--border));
+            transform: translateY(0);
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 hsl(var(--border));
+        }
+        .btn-3d[aria-selected="true"] {
+            box-shadow: 0 4px 0 #3b82f6; 
+        }
+
+        /* Mobile Responsive Table to Cards */
+        @media (max-width: 640px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tr {
+                display: flex;
+                flex-direction: column;
+                background: rgba(255,255,255,0.03);
+                margin-bottom: 1rem;
+                border-radius: 1rem;
+                padding: 1rem;
+                border: 1px solid rgba(255,255,255,0.05);
+            }
+            .responsive-table td {
+                padding: 0.5rem 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .responsive-table td:first-child { justify-content: flex-start; margin-bottom: 0.5rem; }
+            .responsive-table td:last-child { justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; }
+        }
+        
+        /* Highlight specific date on calendar */
+        .calendar-highlight {
+            background-color: #3b82f6 !important;
+            box-shadow: 0 0 15px #3b82f6;
+            color: white !important;
+            transform: scale(1.1);
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased font-sans text-foreground selection:bg-primary/20">
+
+    <!-- Three.js Background Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Header -->
+    <header class="sticky top-4 z-40 w-full flex justify-center px-4">
+        <div class="flex items-center gap-x-2 rounded-full border border-white/10 bg-black/30 backdrop-blur-xl p-2 shadow-2xl transition-all duration-300 w-full max-w-fit hover:border-white/20">
+            <a aria-label="Home" class="group flex items-center space-x-2 pl-2 pr-2 shrink-0" href="#">
+                <div class="relative">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                    <img alt="Logo" width="32" height="32" class="relative h-8 w-8 transition-transform duration-500 group-hover:rotate-[360deg]" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z'/%3E%3Cpath d='M22 10v6'/%3E%3Cpath d='M6 12.5V16a6 3 0 0 0 12 0v-3.5'/%3E%3C/svg%3E">
+                </div>
+            </a>
+            
+            <div class="h-6 w-px bg-white/20"></div>
+
+            <nav class="flex items-center gap-1">
+                <a href="#" class="relative px-3 py-1.5 rounded-full text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-all group">
+                    <span class="hidden sm:inline">হোম</span>
+                </a>
+                <a href="#" class="relative px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all">
+                    <span class="hidden sm:inline">ক্যালেন্ডার</span>
+                </a>
+            </nav>
+
+            <div class="h-6 w-px bg-white/20"></div>
+
+            <button class="relative group px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-sm font-bold shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 transform hover:-translate-y-0.5">
+                <span class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-in"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>
+                    লগইন
+                </span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow pt-10 pb-20 relative px-4">
+        
+        <!-- Filter Toggle & Menu -->
+        <div class="fixed top-1/2 right-0 transform -translate-y-1/2 z-50 perspective-1000">
+            <button id="filter-toggle" class="relative group bg-slate-900 border border-l-purple-500 border-t-purple-500 border-b-purple-900 border-r-purple-900 text-white rounded-l-2xl p-3 shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] transition-all duration-300 translate-x-2 hover:translate-x-0 z-50">
+                <div class="absolute inset-0 bg-purple-600/20 blur-lg -z-10"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-filter animate-pulse"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            </button>
+
+            <!-- Slide Out Menu -->
+            <div id="filter-menu" class="absolute right-12 top-1/2 -translate-y-1/2 w-64 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-l-2xl shadow-2xl transition-all duration-300 ease-in-out opacity-0 translate-x-8 pointer-events-none origin-right p-4">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">ইউনিট ফিল্টার</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="filter-checkbox form-checkbox h-5 w-5 text-blue-500 rounded focus:ring-0 bg-white/10 border-white/20 transition" value="science" checked>
+                        <span class="text-gray-300 group-hover:text-white transition">বিজ্ঞান (Science)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="filter-checkbox form-checkbox h-5 w-5 text-purple-500 rounded focus:ring-0 bg-white/10 border-white/20 transition" value="arts" checked>
+                        <span class="text-gray-300 group-hover:text-white transition">মানবিক (Arts)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="filter-checkbox form-checkbox h-5 w-5 text-orange-500 rounded focus:ring-0 bg-white/10 border-white/20 transition" value="commerce" checked>
+                        <span class="text-gray-300 group-hover:text-white transition">ব্যবসা (Business)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mx-auto max-w-5xl">
+            <!-- Hero Title -->
+            <div class="text-center font-bengali mb-12 relative">
+                <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold leading-tight gradient-text mb-4 animate-float">
+                    অ্যাডমিশন ক্যালেন্ডার
+                </h1>
+                <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto backdrop-blur-sm bg-black/10 p-2 rounded-lg border border-white/5">
+                    সকল বিশ্ববিদ্যালয় ও অধিভুক্ত কলেজের ভর্তি পরীক্ষার <span class="text-white font-semibold">ফিউচারিস্টিক</span> ড্যাশবোর্ড
+                </p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="w-full mb-8 perspective-1000">
+                <div class="flex flex-wrap justify-center gap-3 sm:gap-4 p-2">
+                    <button class="tab-btn btn-3d bg-slate-800 border-slate-700 text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2" aria-selected="true" data-target="schedule">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-clock"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"></path><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h5"></path><path d="M17.5 17.5 16 16.3V14"></path><circle cx="16" cy="16" r="6"></circle></svg>
+                        সময়কাল
+                    </button>
+                    <!-- Other tabs... -->
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div id="content-schedule" class="tab-content relative">
+                <div class="glass-card rounded-3xl p-1 tilt-card" id="schedule-card">
+                    <div class="glass-card-inner rounded-2xl overflow-hidden bg-black/40">
+                        <div class="p-4 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-blue-900/20 to-purple-900/20">
+                            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                                <span class="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+                                লাইভ শিডিউল
+                            </h2>
+                            <div class="flex gap-2">
+                                <span class="h-3 w-3 rounded-full bg-red-500/50"></span>
+                                <span class="h-3 w-3 rounded-full bg-yellow-500/50"></span>
+                                <span class="h-3 w-3 rounded-full bg-green-500/50"></span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left responsive-table">
+                                <thead class="text-xs uppercase bg-white/5 text-gray-300">
+                                    <tr>
+                                        <th class="px-6 py-4 rounded-tl-lg">ইউনিট</th>
+                                        <th class="px-6 py-4">ভার্সিটি</th>
+                                        <th class="px-6 py-4">তারিখ</th>
+                                        <th class="px-6 py-4 rounded-tr-lg text-right">কাউন্টডাউন</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exam-table-body" class="divide-y divide-white/5">
+                                    <!-- Rows generated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="no-data-msg" class="hidden p-8 text-center text-gray-500">কোনো তথ্য পাওয়া যায়নি</div>
+                    </div>
+                </div>
+
+                <!-- Calendar -->
+                <div class="mt-12 text-center">
+                    <div class="glass-card rounded-3xl p-6 tilt-card mx-auto max-w-md relative overflow-hidden" id="calendar-card">
+                        <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/30 rounded-full blur-3xl"></div>
+                        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl"></div>
+
+                        <div class="relative z-10 glass-card-inner">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-2xl font-bold text-white">জানুয়ারি ২০২৬</h3>
+                            </div>
+                            
+                            <div class="grid grid-cols-7 gap-2 mb-2 text-center text-gray-400 text-xs font-bold">
+                                <div>রবি</div><div>সোম</div><div>মঙ্গল</div><div>বুধ</div><div>বৃহ</div><div>শুক্র</div><div>শনি</div>
+                            </div>
+                            
+                            <!-- Calendar Grid Container -->
+                            <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-center">
+                                <!-- JS will populate this -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-auto py-8 text-center text-gray-500 text-sm border-t border-white/5 bg-black/40 backdrop-blur-md relative z-10">
+        <p>&copy; 2026 Study Platform. 3D Experience.</p>
+    </footer>
+
+    <!-- Logic -->
+    <script>
+        // --- Data Source ---
+        const exams = [
+            { id: 1, name: "চবি (A)", unit: "science", type: "বিজ্ঞান", date: "2026-01-02", icon: "atom", color: "blue" },
+            { id: 2, name: "চবি (D)", unit: "mixed", type: "বিভাগ পরিবর্তন", date: "2026-01-03", icon: "users", color: "purple" },
+            { id: 3, name: "চবি (D1)", unit: "mixed", type: "উপ-ইউনিট", date: "2026-01-05", icon: "puzzle", color: "purple" },
+            { id: 4, name: "চবি (B1)", unit: "arts", type: "কলা ও মানববিদ্যা", date: "2026-01-07", icon: "palette", color: "amber" },
+            { id: 5, name: "বুটেক্স", unit: "science", type: "ইঞ্জিনিয়ারিং", date: "2026-01-09", icon: "flask-conical", color: "orange" },
+            { id: 6, name: "বুয়েট", unit: "science", type: "ইঞ্জিনিয়ারিং", date: "2026-01-10", icon: "hammer", color: "red" },
+            { id: 7, name: "চবি (B)", unit: "arts", type: "কলা", date: "2026-01-10", icon: "book-open", color: "amber" },
+            { id: 8, name: "শাবিপ্রবি (A)", unit: "science", type: "বিজ্ঞান", date: "2026-01-13", icon: "atom", color: "green" },
+            { id: 9, name: "শাবিপ্রবি (B)", unit: "mixed", type: "অন্যান্য", date: "2026-01-14", icon: "layers", color: "green" },
+            { id: 10, name: "কুয়েট", unit: "science", type: "ইঞ্জিনিয়ারিং", date: "2026-01-15", icon: "wrench", color: "red" },
+            { id: 11, name: "রাবি (C)", unit: "science", type: "বিজ্ঞান", date: "2026-01-16", icon: "microscope", color: "cyan" },
+            { id: 12, name: "চুয়েট", unit: "science", type: "ইঞ্জিনিয়ারিং", date: "2026-01-17", icon: "hard-hat", color: "red" },
+            { id: 13, name: "রাবি (A)", unit: "arts", type: "মানবিক", date: "2026-01-17", icon: "feather", color: "pink" },
+            { id: 14, name: "নার্সিং", unit: "science", type: "মেডিকেল", date: "2026-01-23", icon: "heart-pulse", color: "teal" },
+            { id: 15, name: "রাবি (B)", unit: "commerce", type: "ব্যবসা", date: "2026-01-24", icon: "bar-chart-3", color: "emerald" },
+            { id: 16, name: "ঢাবি (IBA)", unit: "mixed", type: "IBA", date: "2025-11-28", icon: "briefcase", color: "gray", finished: true }
+        ];
+
+        // --- Bengali Helper ---
+        const toBengali = (num) => {
+            const bengaliDigits = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+            return num.toString().split('').map(d => bengaliDigits[d] || d).join('');
+        };
+
+        const formatDate = (dateStr) => {
+            const date = new Date(dateStr);
+            const months = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
+            return `${toBengali(date.getDate())} ${months[date.getMonth()]} ${toBengali(date.getFullYear())}`;
+        };
+
+        // --- Render Logic ---
+        const renderExams = () => {
+            const tbody = document.getElementById('exam-table-body');
+            const noData = document.getElementById('no-data-msg');
+            tbody.innerHTML = '';
+
+            // Get checked filters
+            const checkedFilters = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(cb => cb.value);
+
+            const filteredExams = exams.filter(exam => checkedFilters.includes(exam.unit) || (exam.unit === 'mixed'));
+
+            if (filteredExams.length === 0) {
+                noData.classList.remove('hidden');
+                return;
+            } else {
+                noData.classList.add('hidden');
+            }
+
+            filteredExams.forEach(exam => {
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-white/5 transition-colors group cursor-pointer animate-fade-in`;
+                tr.dataset.date = exam.date; // Use specific date string
+                
+                // Row Click Interaction (Highlight Calendar)
+                tr.addEventListener('mouseenter', () => highlightCalendarDate(exam.date));
+                tr.addEventListener('mouseleave', () => clearCalendarHighlight());
+
+                // Icon selection based on unit
+                let iconSvg = '';
+                if(exam.icon === 'atom') iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-atom text-${exam.color}-400"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.53-11.9-4.49-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.53 11.9 4.49z"/><path d="M15.7 15.7c4.52-4.54 6.53-9.87 4.49-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.53 9.87-4.49 11.9 2.03 2.04 7.36.02 11.9-4.5z"/></svg>`;
+                else if (exam.icon === 'flask-conical') iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-flask-conical text-${exam.color}-400"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>`;
+                else iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dashed text-${exam.color}-400"><path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M6.391 20.279a10 10 0 0 1-2.7-2.69"/><path d="M20.279 17.609a10 10 0 0 1-2.69 2.7"/></svg>`;
+
+                // Countdown or Status
+                let countdownHtml = `<div class="countdown inline-block font-mono text-cyan-400 bg-cyan-950/30 px-3 py-1 rounded border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]" data-date="${exam.date}T00:00:00">--</div>`;
+                if(exam.finished) {
+                    countdownHtml = `<span class="text-red-400 font-bold bg-red-950/30 px-3 py-1 rounded border border-red-500/30">শেষ</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="p-2 bg-${exam.color}-500/20 rounded-lg w-fit group-hover:scale-110 transition-transform">
+                            ${iconSvg}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-bold text-lg text-white ${exam.finished ? 'line-through decoration-red-500 text-gray-500' : ''}">${exam.name}</td>
+                    <td class="px-6 py-4 text-gray-300 whitespace-nowrap">${formatDate(exam.date)}</td>
+                    <td class="px-6 py-4 text-right">${countdownHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateCountdowns(); // Re-run countdown logic for new elements
+        };
+
+        // --- Calendar Logic ---
+        const renderCalendar = () => {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            
+            // Jan 2026 starts on Thursday (index 4)
+            // Previous month (Dec 2025) ends on 31
+            for (let i = 28; i <= 31; i++) {
+                grid.innerHTML += `<div class="p-2 text-gray-700">${i}</div>`;
+            }
+
+            // Current Month (Jan 2026: 31 days)
+            for (let i = 1; i <= 31; i++) {
+                const dayId = `day-2026-01-${String(i).padStart(2, '0')}`;
+                
+                // Check if any exam falls on this day
+                const examOnDay = exams.find(e => e.date === `2026-01-${String(i).padStart(2, '0')}`);
+                let content = i;
+                let classes = "p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition relative";
+
+                if (examOnDay) {
+                    classes = `p-2 relative bg-${examOnDay.color}-600 rounded-lg shadow-lg shadow-${examOnDay.color}-500/50 text-white cursor-pointer transform hover:scale-110 transition group z-10`;
+                    // Add an indicator dot
+                    content += `<span class="absolute -top-1 -right-1 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span></span>`;
+                }
+
+                grid.innerHTML += `<div id="${dayId}" class="${classes}">${content}</div>`;
+            }
+            
+            // Next Month buffer
+            for (let i = 1; i <= 7; i++) {
+                grid.innerHTML += `<div class="p-2 text-gray-700">${i}</div>`;
+            }
+        };
+
+        const highlightCalendarDate = (dateStr) => {
+            const el = document.getElementById(`day-${dateStr}`);
+            if(el) el.classList.add('calendar-highlight');
+        };
+
+        const clearCalendarHighlight = () => {
+            document.querySelectorAll('.calendar-highlight').forEach(el => el.classList.remove('calendar-highlight'));
+        };
+
+        // --- Filter Menu Logic ---
+        const filterToggle = document.getElementById('filter-toggle');
+        const filterMenu = document.getElementById('filter-menu');
+        const checkboxes = document.querySelectorAll('.filter-checkbox');
+        let isFilterOpen = false;
+
+        filterToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isFilterOpen = !isFilterOpen;
+            if (isFilterOpen) {
+                filterMenu.classList.remove('opacity-0', 'translate-x-8', 'pointer-events-none');
+            } else {
+                filterMenu.classList.add('opacity-0', 'translate-x-8', 'pointer-events-none');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!filterMenu.contains(e.target) && !filterToggle.contains(e.target) && isFilterOpen) {
+                isFilterOpen = false;
+                filterMenu.classList.add('opacity-0', 'translate-x-8', 'pointer-events-none');
+            }
+        });
+
+        checkboxes.forEach(box => {
+            box.addEventListener('change', renderExams);
+        });
+
+        // --- Countdown Logic ---
+        const updateCountdowns = () => {
+            const now = new Date().getTime();
+            document.querySelectorAll('.countdown').forEach(el => {
+                const targetDate = new Date(el.dataset.date).getTime();
+                const distance = targetDate - now;
+
+                if (distance < 0) {
+                    el.innerHTML = 'শুরু হয়েছে';
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                
+                el.innerHTML = `${toBengali(days)} দিন : ${toBengali(hours)} ঘণ্টা`;
+            });
+        };
+
+        // --- Three.js & Tilt (Previous Logic) ---
+        const initThreeJS = () => {
+            const canvas = document.getElementById('bg-canvas');
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.002);
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 50;
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            const geometry = new THREE.BufferGeometry();
+            const particlesCount = 1000;
+            const posArray = new Float32Array(particlesCount * 3);
+            for(let i = 0; i < particlesCount * 3; i++) posArray[i] = (Math.random() - 0.5) * 100;
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const material = new THREE.PointsMaterial({ size: 0.2, color: 0x60a5fa, transparent: true, opacity: 0.8 });
+            const particlesMesh = new THREE.Points(geometry, material);
+            scene.add(particlesMesh);
+
+            let mouseX = 0; let mouseY = 0;
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX / window.innerWidth - 0.5;
+                mouseY = event.clientY / window.innerHeight - 0.5;
+            });
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                particlesMesh.rotation.y += 0.001;
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += mouseX * 0.05;
+                particlesMesh.rotation.x += mouseY * 0.05;
+                renderer.render(scene, camera);
+            };
+            animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        const initTilt = () => {
+            const cards = document.querySelectorAll('.tilt-card');
+            document.addEventListener('mousemove', (e) => {
+                cards.forEach(card => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const dist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+                    if (dist < 600) {
+                        const rotateX = ((y - rect.height / 2) / rect.height) * -10;
+                        const rotateY = ((x - rect.width / 2) / rect.width) * 10;
+                        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                    } else {
+                        card.style.transform = `perspective(1000px) rotateX(0) rotateY(0)`;
+                    }
+                });
+            });
+        };
+
+        // --- Init ---
+        window.addEventListener('load', () => {
+            initThreeJS();
+            initTilt();
+            renderExams();
+            renderCalendar();
+            setInterval(updateCountdowns, 1000);
+        });
+
+    </script>
+</body>
+</html>
